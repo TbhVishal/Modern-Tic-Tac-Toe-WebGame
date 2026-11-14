@@ -1,4 +1,3 @@
-// Initialize game state
 let board = [
     ["", "", ""],
     ["", "", ""],
@@ -21,51 +20,55 @@ const startSound = document.getElementById("start-sound");
 
 // Preload audio
 [moveSound, winSound, drawSound, startSound].forEach(audio => {
-    audio.load();
+    if (audio) audio.load();
 });
 
-// Dynamic CSS for custom colors
-const styleSheet = document.createElement("style");
-document.head.appendChild(styleSheet);
+// Sync custom player colors with CSS custom properties
 function updateColors() {
-    styleSheet.textContent = `
-        .cell.x { color: ${xColorPicker.value}; }
-        .cell.o { color: ${oColorPicker.value}; }
-        #win-line.x { background-color: ${xColorPicker.value}; }
-        #win-line.o { background-color: ${oColorPicker.value}; }
-    `;
+    document.documentElement.style.setProperty("--x-color", xColorPicker.value);
+    document.documentElement.style.setProperty("--o-color", oColorPicker.value);
 }
 xColorPicker.addEventListener("input", updateColors);
 oColorPicker.addEventListener("input", updateColors);
 updateColors();
 
-// Theme toggle
+// Theme toggle with localStorage persistence
+const savedTheme = localStorage.getItem("theme");
+if (savedTheme === "dark") {
+    document.body.classList.add("dark");
+    themeToggle.textContent = "Light Mode";
+}
+
 themeToggle.addEventListener("click", () => {
     document.body.classList.toggle("dark");
-    themeToggle.textContent = document.body.classList.contains("dark")
-        ? "Light Mode"
-        : "Dark Mode";
+    const isDark = document.body.classList.contains("dark");
+    themeToggle.textContent = isDark ? "Light Mode" : "Dark Mode";
+    localStorage.setItem("theme", isDark ? "dark" : "light");
 });
 
-// Event listeners for cells
+// Cell interaction (click and keyboard)
 cells.forEach(cell => {
-    cell.addEventListener("click", handleCellClick, { passive: true });
+    cell.addEventListener("click", handleCellClick);
+    cell.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleCellClick(e);
+        }
+    });
 });
 
-// Reset game
 resetButton.addEventListener("click", resetGame);
 
-// Enable audio after user interaction
+// Unlock audio on first user interaction
 document.addEventListener("click", () => {
-    moveSound.muted = false;
-    winSound.muted = false;
-    drawSound.muted = false;
-    startSound.muted = false;
+    [moveSound, winSound, drawSound, startSound].forEach(audio => {
+        if (audio) audio.muted = false;
+    });
 }, { once: true });
 
 function handleCellClick(e) {
-    const cell = e.target;
-    const index = cell.getAttribute("data-index");
+    const cell = e.currentTarget;
+    const index = parseInt(cell.getAttribute("data-index"), 10);
     const row = Math.floor(index / 3);
     const col = index % 3;
 
@@ -74,7 +77,8 @@ function handleCellClick(e) {
     board[row][col] = currentPlayer;
     cell.textContent = currentPlayer;
     cell.classList.add(currentPlayer.toLowerCase());
-    moveSound.play().catch(() => console.log("Move sound blocked"));
+    cell.setAttribute("aria-label", `Cell ${index + 1}, Player ${currentPlayer}`);
+    if (moveSound) moveSound.play().catch(() => {});
 
     const winCells = checkWin();
     if (winCells) {
@@ -83,14 +87,14 @@ function handleCellClick(e) {
         gameActive = false;
         drawWinLine(winCells);
         createParticles();
-        winSound.play().catch(() => console.log("Win sound blocked"));
+        if (winSound) winSound.play().catch(() => {});
         return;
     }
 
     if (checkDraw()) {
         statusDisplay.textContent = "It's a Draw!";
         gameActive = false;
-        drawSound.play().catch(() => console.log("Draw sound blocked"));
+        if (drawSound) drawSound.play().catch(() => {});
         return;
     }
 
@@ -99,21 +103,18 @@ function handleCellClick(e) {
 }
 
 function checkWin() {
-    // Rows
     for (let i = 0; i < 3; i++) {
         if (board[i][0] === currentPlayer && board[i][1] === currentPlayer && board[i][2] === currentPlayer) {
             return [i * 3, i * 3 + 1, i * 3 + 2];
         }
     }
 
-    // Columns
     for (let i = 0; i < 3; i++) {
         if (board[0][i] === currentPlayer && board[1][i] === currentPlayer && board[2][i] === currentPlayer) {
             return [i, i + 3, i + 6];
         }
     }
 
-    // Diagonals
     if (board[0][0] === currentPlayer && board[1][1] === currentPlayer && board[2][2] === currentPlayer) {
         return [0, 4, 8];
     }
@@ -127,9 +128,7 @@ function checkWin() {
 function checkDraw() {
     for (let i = 0; i < 3; i++) {
         for (let j = 0; j < 3; j++) {
-            if (board[i][j] === "") {
-                return false;
-            }
+            if (board[i][j] === "") return false;
         }
     }
     return true;
@@ -138,62 +137,68 @@ function checkDraw() {
 function drawWinLine(cells) {
     const first = cells[0];
     const last = cells[cells.length - 1];
-    const board = document.querySelector("#board");
-    const boardSize = parseFloat(getComputedStyle(board).width); // Total board width
-    const gap = 6; // Grid gap
-    const padding = 6; // Board padding
-    const cellSize = (boardSize - 2 * padding - 2 * gap) / 3; // Calculate cell size
+    const boardEl = document.querySelector("#board");
+    const boardComputed = getComputedStyle(boardEl);
+    const boardSize = parseFloat(boardComputed.width);
+    const gap = parseFloat(boardComputed.rowGap) || 8;
+    const padding = parseFloat(boardComputed.paddingLeft) || 8;
+    const cellSize = (boardSize - 2 * padding - 2 * gap) / 3;
 
-    let x1, y1, x2, y2, width, height, rotate;
-
-    // Calculate start and end points (centers of first and last cells)
     const firstRow = Math.floor(first / 3);
     const firstCol = first % 3;
     const lastRow = Math.floor(last / 3);
     const lastCol = last % 3;
 
-    // Cell center coordinates
-    x1 = padding + firstCol * (cellSize + gap) + cellSize / 2;
-    y1 = padding + firstRow * (cellSize + gap) + cellSize / 2;
-    x2 = padding + lastCol * (cellSize + gap) + cellSize / 2;
-    y2 = lastRow * (cellSize + gap) + cellSize / 2;
+    const x1 = padding + firstCol * (cellSize + gap) + cellSize / 2;
+    const y1 = padding + firstRow * (cellSize + gap) + cellSize / 2;
+    const x2 = padding + lastCol * (cellSize + gap) + cellSize / 2;
+    const y2 = padding + lastRow * (cellSize + gap) + cellSize / 2;
 
-    if (first % 3 === last % 3) { // Column
-        width = 10;
-        height = boardSize - 2 * padding;
-        x1 = x1; // Center of column
-        y1 = padding;
-        rotate = 0;
-    } else if (Math.floor(first / 3) === Math.floor(last / 3)) { // Row
+    let width, height, rotate, startX, startY;
+
+    if (first % 3 === last % 3) {
+        // Vertical column win
         width = boardSize - 2 * padding;
-        height = 10;
-        x1 = padding;
-        y1 = y1; // Center of row
+        height = 8;
+        startX = x1;
+        startY = padding;
+        rotate = 90;
+    } else if (Math.floor(first / 3) === Math.floor(last / 3)) {
+        // Horizontal row win
+        width = boardSize - 2 * padding;
+        height = 8;
+        startX = padding;
+        startY = y1;
         rotate = 0;
-    } else { // Diagonals
+    } else {
+        // Diagonal win
         width = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-        height = 10;
+        height = 8;
+        startX = x1;
+        startY = y1;
         rotate = Math.atan2(y2 - y1, x2 - x1) * (180 / Math.PI);
     }
 
     winLine.style.width = "0";
     winLine.style.height = `${height}px`;
-    winLine.style.left = `${x1}px`;
-    winLine.style.top = `${y1}px`;
+    winLine.style.left = `${startX}px`;
+    winLine.style.top = `${startY}px`;
     winLine.style.transform = `rotate(${rotate}deg)`;
+    winLine.classList.remove("x", "o");
     winLine.classList.add(currentPlayer.toLowerCase());
 
-    // Trigger animation
-    setTimeout(() => {
+    requestAnimationFrame(() => {
         winLine.style.width = `${width}px`;
-    }, 10);
+    });
 }
+
 function createParticles() {
+    const container = document.querySelector(".container");
     const particleContainer = document.createElement("div");
     particleContainer.className = "particles";
-    document.querySelector(".container").appendChild(particleContainer);
+    container.appendChild(particleContainer);
 
-    const particleCount = 20;
+    const particleCount = 24;
     const color = currentPlayer === "X" ? xColorPicker.value : oColorPicker.value;
 
     for (let i = 0; i < particleCount; i++) {
@@ -201,16 +206,16 @@ function createParticles() {
         particle.className = "particle";
         particle.style.background = color;
         const angle = Math.random() * 360;
-        const distance = Math.random() * 100 + 50;
+        const distance = Math.random() * 90 + 40;
         particle.style.setProperty("--x", `${Math.cos(angle * Math.PI / 180) * distance}px`);
         particle.style.setProperty("--y", `${Math.sin(angle * Math.PI / 180) * distance}px`);
-        particle.style.animationDelay = `${Math.random() * 0.5}s`;
+        particle.style.animationDelay = `${Math.random() * 0.3}s`;
         particleContainer.appendChild(particle);
     }
 
     setTimeout(() => {
         particleContainer.remove();
-    }, 1500);
+    }, 1200);
 }
 
 function resetGame() {
@@ -223,13 +228,14 @@ function resetGame() {
     gameActive = true;
     statusDisplay.textContent = `Player ${currentPlayer}'s Turn`;
     statusDisplay.classList.remove("win");
-    cells.forEach(cell => {
+    cells.forEach((cell, idx) => {
         cell.textContent = "";
         cell.classList.remove("x", "o");
+        cell.setAttribute("aria-label", `Cell ${idx + 1}, Empty`);
     });
     winLine.style.width = "0";
     winLine.classList.remove("x", "o");
-    const particleContainer = document.querySelector(".particles");
-    if (particleContainer) particleContainer.remove();
-    startSound.play().catch(() => console.log("Start sound blocked"));
+    const existingParticles = document.querySelector(".particles");
+    if (existingParticles) existingParticles.remove();
+    if (startSound) startSound.play().catch(() => {});
 }
