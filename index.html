@@ -20,17 +20,17 @@
             <label>O Color: <input type="color" id="o-color" value="#3498db"></label>
         </div>
         <div id="status">Player X's Turn</div>
-        <div id="board">
-            <div class="cell" data-index="0"></div>
-            <div class="cell" data-index="1"></div>
-            <div class="cell" data-index="2"></div>
-            <div class="cell" data-index="3"></div>
-            <div class="cell" data-index="4"></div>
-            <div class="cell" data-index="5"></div>
-            <div class="cell" data-index="6"></div>
-            <div class="cell" data-index="7"></div>
-            <div class="cell" data-index="8"></div>
-            <div id="win-line"></div>
+        <div id="board" role="grid" aria-label="Tic Tac Toe board">
+            <div class="cell" data-index="0" role="button" tabindex="0" aria-label="Row 1 Column 1, empty"></div>
+            <div class="cell" data-index="1" role="button" tabindex="0" aria-label="Row 1 Column 2, empty"></div>
+            <div class="cell" data-index="2" role="button" tabindex="0" aria-label="Row 1 Column 3, empty"></div>
+            <div class="cell" data-index="3" role="button" tabindex="0" aria-label="Row 2 Column 1, empty"></div>
+            <div class="cell" data-index="4" role="button" tabindex="0" aria-label="Row 2 Column 2, empty"></div>
+            <div class="cell" data-index="5" role="button" tabindex="0" aria-label="Row 2 Column 3, empty"></div>
+            <div class="cell" data-index="6" role="button" tabindex="0" aria-label="Row 3 Column 1, empty"></div>
+            <div class="cell" data-index="7" role="button" tabindex="0" aria-label="Row 3 Column 2, empty"></div>
+            <div class="cell" data-index="8" role="button" tabindex="0" aria-label="Row 3 Column 3, empty"></div>
+            <div id="win-line" aria-hidden="true"></div>
         </div>
         <div class="buttons">
             <button id="reset">Reset Game</button>

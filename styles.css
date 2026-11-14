@@ -376,3 +376,11 @@ body.dark footer {
         padding: 10px 20px;
     }
 }
+/* Accessibility focus styles */
+.cell:focus-visible {
+    outline: 3px solid #3498db;
+    outline-offset: -3px;
+}
+body.dark .cell:focus-visible {
+    outline: 3px solid #e74c3c;
+}

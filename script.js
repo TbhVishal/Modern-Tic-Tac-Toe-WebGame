@@ -47,9 +47,15 @@ themeToggle.addEventListener("click", () => {
         : "Dark Mode";
 });
 
-// Event listeners for cells
+// Event listeners for cells (mouse and keyboard accessibility)
 cells.forEach(cell => {
     cell.addEventListener("click", handleCellClick, { passive: true });
+    cell.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleCellClick(e);
+        }
+    });
 });
 
 // Reset game
@@ -74,6 +80,7 @@ function handleCellClick(e) {
     board[row][col] = currentPlayer;
     cell.textContent = currentPlayer;
     cell.classList.add(currentPlayer.toLowerCase());
+    cell.setAttribute("aria-label", `Row ${row + 1} Column ${col + 1}, Player ${currentPlayer}`);
     moveSound.play().catch(() => console.log("Move sound blocked"));
 
     const winCells = checkWin();
